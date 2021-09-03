@@ -1,0 +1,86 @@
+
+----trigger---- 
+CREATE OR REPLACE FUNCTION impedir_venta() 
+	RETURNS TRIGGER 
+	AS
+	$impedir_venta$
+	    declare
+	    estado_malo int;
+	    venta_producto int;
+		
+	--SE INICIA 
+	 BEGIN   
+		SELECT codigo_producto into estado_malo from estado_producto  where descripcion_estadoproducto='caducado';
+		SELECT codigo_producto into venta_producto from venta where codigo_producto=estado_malo;
+			if (venta_producto =new.codigo_producto)then
+				raise exception 'Este producto no se puede vender porque esta caducado';
+			end if;	
+		RETURN new;
+	 END; 
+	--SE TERMINA LA FUNCION
+	$impedir_venta$
+	LANGUAGE plpgsql
+
+
+	CREATE TRIGGER verificar_estados before insert
+	on venta for each row 
+	execute procedure impedir_venta() ;
+
+
+insert into venta values('1234','000001','000001','105','01/02/2019','PROTEINA O.O','49.99' );
+
+----trigger---- 
+
+
+
+----------CURSOR QUE MUESTRE EL NOMBRE DEL CLIENTE, LA FECHA DE COMPRA----------------- 
+---------------------- ----------------------------
+	do 
+	$$
+	DECLARE 
+		datos RECORD;
+		cur_datos  cursor for SELECT *FROM public.venta
+			INNER JOIN  public.producto ON  venta.codigo_producto = producto.codigo_producto 
+			INNER JOIN  public.cliente ON cliente.id_cliente = cliente.id_cliente;
+			
+	BEGIN	
+		OPEN cur_datos;
+		FETCh cur_datos INTO datos;
+		while (found) loop 
+		RAISE NOTICE 
+		'
+		NOMBRE DEL CLIENTE: % 
+		FECHA DE COMPRA: % 
+	
+		', datos.nombres_cliente, datos.fecha_venta;
+		FETCh cur_datos INTO datos;
+	end loop;	
+	end $$
+	Language 'plpgsql';
+
+
+
+
+
+-----------funcion------
+
+create or replace function venta()
+RETURNS SETOF venta AS
+$BODY$
+			
+BEGIN   
+RETURN query
+SELECT *
+            from venta
+		where venta.fecha_venta < CURRENT_DATE;
+END;
+$BODY$ 
+language plpgsql;
+
+
+select * FROM venta();
+
+
+
+
+	  
